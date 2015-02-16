@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sonniges Wetter</string>
+
+    <string name="error_title">Ups!</string>
+    <string name="error_message">Es gab einen Fehler.</string>
+    <string name="error_ok_button">OK</string>
+    <string name="query_language">de</string>
+    <string name="time_prefix">"Um "</string>
+    <string name="time_suffix">" ist es"</string>
+    <string name="network_unavailable_error">Netzwerk ist nicht verfügbar</string>
+    <string name="time_default">Um ─ ist es</string>
+    <string name="humidity_label">Luftfeuchtigkeit</string>
+    <string name="precipitation_label">Regen oder Schnee</string>
+    <string name="summary_default">"Laden des aktuellen Wetters…"</string>
+    <string name="button_refresh">"Aktualisieren"</string>
+</resources>

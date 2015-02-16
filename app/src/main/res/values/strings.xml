@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sunny Weather</string>
+
+    <string name="error_title">Oops!</string>
+    <string name="error_message">There was an error.</string>
+    <string name="error_ok_button">OK</string>
+    <string name="query_language">en</string>
+    <string name="time_prefix">"At "</string>
+    <string name="time_suffix">" it is"</string>
+    <string name="network_unavailable_error">Network is unavailable</string>
+    <string name="time_default">At ─ it is</string>
+    <string name="humidity_label">Humidity</string>
+    <string name="precipitation_label">Rain or Snow</string>
+    <string name="summary_default">"Getting current Weather…"</string>
+    <string name="button_refresh">"Refresh"</string>
+</resources>
