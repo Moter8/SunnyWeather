@@ -3,17 +3,19 @@ package pw.moter8.sunnyweather;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import com.afollestad.materialdialogs.MaterialDialog;
 import com.crashlytics.android.Crashlytics;
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
@@ -36,8 +38,12 @@ public class MainActivity extends ActionBarActivity {
     private CurrentWeather mCurrentWeather;
     private CurrentLocation mCurrentLocation;
     private ColorWheel mColorWheel = new ColorWheel();
+    public double latitude = 0.0;
+    public double longitude = 0.0;
+    public String givenLocation = "Meme";
 
 
+    @InjectView(R.id.locationLabel) EditText mLocationLabel;
     @InjectView(R.id.timeLabel) TextView mTimeLabel;
     @InjectView(R.id.temperatureLabel) TextView mTemperatureValue;
     @InjectView(R.id.humidityValue) TextView mHumidityValue;
@@ -55,22 +61,22 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.inject(this); // inject the above views
 
-
         final RelativeLayout relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
         relativeLayout.setBackgroundColor(mColorWheel.getColor()); // random backgroundColor
 
-        final double queryLat = 38.83831;
-        final double queryLon = 0.02316;
-
-        callApi(queryLat, queryLon);
+        //callMapquestApi("Ondara, Spain");
+        //callApi(queryLat, queryLon);
 
 
         View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                callApi(queryLat, queryLon);
+                //callApi(queryLat, queryLon);
+                //callMapquestApi("Ondara, Spain");
+                Toast.makeText(MainActivity.this, "Location" + givenLocation + ", Longitude: " + longitude + ", Latitude: " + latitude, Toast.LENGTH_SHORT).show();
             }
         };
+
 
         mButton.setOnClickListener(listener);
     }
@@ -78,8 +84,8 @@ public class MainActivity extends ActionBarActivity {
     private void callApi(double latitude, double longitude) {
 
         if (isNetworkAvail()) {
-            //callMapquestApi("Ondara, Spain");
-            callForecastApi(latitude, longitude);
+            callMapquestApi("Ondara, Spain");
+            //callForecastApi(latitude, longitude);
             toggleRefresh();
         }
         else {
@@ -119,6 +125,7 @@ public class MainActivity extends ActionBarActivity {
                 try {
                     String jsonData = response.body().string();
                     if (response.isSuccessful()) {
+                        Log.i(TAG, "Successful ");
                         mCurrentWeather = getCurrentDetails(jsonData);
                         runOnUiThread(new Runnable() {
                             @Override
@@ -152,25 +159,33 @@ public class MainActivity extends ActionBarActivity {
 
     private void callMapquestApi (String queryLocation){
 
-        String baseUrl = "http://open.mapquestapi.com/geocoding/v1/adress?key=";
+        String baseUrl = "http://open.mapquestapi.com/geocoding/v1/address?key=";
         String API_KEY = "Fmjtd%7Cluu821uz2q%2C8n%3Do5-94bn5w";
-        String queryOptions0 = "&json={location:{street:\"";
-        // String mQueryLoc = queryLocation;
-        String queryOptions1 = "\"},options:{thumbMaps:false,maxResults:1}}";
-        final String mapquestUrl = baseUrl + API_KEY + queryOptions0 + queryLocation + queryOptions1;
+        String queryOptions0 = "&location=";
+        String mQueryLocation = Uri.encode(queryLocation);
+        String queryOptions1 = "&maxResults=1";
+        final String mapquestUrl = baseUrl + API_KEY + queryOptions0 + mQueryLocation + queryOptions1;
 
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(mapquestUrl)
                 .build();
+        Log.i(TAG, "Built Request");
 
         Call call = client.newCall(request);
         call.enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
+                Log.e(TAG, "Failure Mapquest");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toggleRefresh();
+                    }
+                });
                 alertUserAboutError();
-                toggleRefresh();
             }
+
 
             @Override
             public void onResponse(Response response) throws IOException {
@@ -178,22 +193,35 @@ public class MainActivity extends ActionBarActivity {
                     String jsonData = response.body().string();
                     Log.d(TAG, jsonData);
                     if (response.isSuccessful()) {
+                        Log.i(TAG, "Successful Mapquest");
                         mCurrentLocation = getLocationLatLong(jsonData);
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                updateDisplay();
+                                //updateDisplay();
+                                toggleRefresh();
                             }
                         });
 
                     } else {
+                        Log.e(TAG, "elseblock onReponse");
                         alertUserAboutError();
-                        toggleRefresh();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                toggleRefresh();
+                            }
+                        });
                     }
                 } catch (IOException | JSONException e) {
                     Log.e(TAG, e.getMessage());
                     alertUserAboutError();
-                    toggleRefresh();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            toggleRefresh();
+                        }
+                    });
                 }
             }
         });
@@ -250,16 +278,23 @@ public class MainActivity extends ActionBarActivity {
 
     private CurrentLocation getLocationLatLong(String jsonData) throws JSONException {
         JSONObject locationQuery = new JSONObject(jsonData);
-        JSONObject location = locationQuery.getJSONArray("results").getJSONArray(0).getJSONObject(0);
+        JSONObject results = locationQuery.getJSONArray("results").getJSONObject(0);
 
-        JSONObject latLng = location.getJSONArray("locations").getJSONObject(0).getJSONObject("latLng");
-        JSONObject providedLocation = location.getJSONObject("providedLocation");
+        JSONObject latLng = results.getJSONArray("locations").getJSONObject(0).getJSONObject("latLng");
+        Log.i(TAG, latLng.toString());
+        JSONObject providedLocation = results.getJSONObject("providedLocation");
 
         CurrentLocation currentLocation = new CurrentLocation();
 
-        currentLocation.setProvidedLocation(providedLocation.getString("providedLocation"));
+        currentLocation.setProvidedLocation(providedLocation.getString("location"));
         currentLocation.setLatitude(latLng.getDouble("lat"));
         currentLocation.setLongitude(latLng.getDouble("lng"));
+        latitude = latLng.getDouble("lat");
+        longitude = latLng.getDouble("lng");
+        givenLocation = providedLocation.getString("location");
+
+        String string = "Latitude: " + latitude + ", Longitude: " + longitude + ", Location: " + givenLocation;
+        Log.e(TAG, string);
 
         return currentLocation;
     }

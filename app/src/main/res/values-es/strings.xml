@@ -3,7 +3,7 @@
     <string name="app_name">Tiempo Soleado</string>
 
     <string name="error_title">"¡Uy!"</string>
-    <string name="error_message">Hubo un error.</string>
+    <string name="error_message">Ha ocurrido un Problema</string>
     <string name="error_ok_button">OK</string>
     <string name="query_language">es</string>
     <string name="time_prefix">"Són las "</string>
