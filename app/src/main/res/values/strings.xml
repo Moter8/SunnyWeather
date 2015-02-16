@@ -14,4 +14,5 @@
     <string name="precipitation_label">Rain or Snow</string>
     <string name="summary_default">"Getting current Weather…"</string>
     <string name="button_refresh">"Refresh"</string>
+    <string name="demand_refresh">"Now hit "</string>
 </resources>

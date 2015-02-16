@@ -7,14 +7,16 @@ import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.crashlytics.android.Crashlytics;
 import com.squareup.okhttp.Call;
@@ -29,6 +31,7 @@ import org.json.JSONObject;
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 import io.fabric.sdk.android.Fabric;
+
 import java.io.IOException;
 
 
@@ -38,13 +41,13 @@ public class MainActivity extends ActionBarActivity {
     private CurrentWeather mCurrentWeather;
     private CurrentLocation mCurrentLocation;
     private ColorWheel mColorWheel = new ColorWheel();
-    public double latitude = 0.0;
-    public double longitude = 0.0;
-    public String givenLocation = "Meme";
+    public double latitude = 38.827728;
+    public double longitude = 0.01694;
+    public String givenLocation = "Ondara, Alicante";
 
 
     @InjectView(R.id.locationLabel) EditText mLocationLabel;
-    @InjectView(R.id.timeLabel) TextView mTimeLabel;
+    @InjectView(R.id.timeLabel )TextView mTimeLabel;
     @InjectView(R.id.temperatureLabel) TextView mTemperatureValue;
     @InjectView(R.id.humidityValue) TextView mHumidityValue;
     @InjectView(R.id.precipValue) TextView mPrecipValue;
@@ -64,16 +67,27 @@ public class MainActivity extends ActionBarActivity {
         final RelativeLayout relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
         relativeLayout.setBackgroundColor(mColorWheel.getColor()); // random backgroundColor
 
-        //callMapquestApi("Ondara, Spain");
-        //callApi(queryLat, queryLon);
+        mLocationLabel.setOnEditorActionListener(new EditText.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    //Toast.makeText(MainActivity.this, getString(R.string.demand_refresh) + getString(R.string.button_refresh)) + '!' , Toast.LENGTH_SHORT).show();
+                    callMapquestApi(mLocationLabel.getText().toString());
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(mLocationLabel.getWindowToken(), 0);
+                    return true;
+                }
+                return false;
+            }
+        });  //Handles the "Enter" of the EditText submission
 
 
         View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //callApi(queryLat, queryLon);
+                callForecastApi(latitude, longitude);
                 //callMapquestApi("Ondara, Spain");
-                Toast.makeText(MainActivity.this, "Location" + givenLocation + ", Longitude: " + longitude + ", Latitude: " + latitude, Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Location" + givenLocation + ", Longitude: " + longitude + ", Latitude: " + latitude, Toast.LENGTH_SHORT).show();
             }
         };
 
@@ -81,150 +95,152 @@ public class MainActivity extends ActionBarActivity {
         mButton.setOnClickListener(listener);
     }
 
-    private void callApi(double latitude, double longitude) {
+    private void callForecastApi(double queryLatitude, double queryLongitude) {
 
         if (isNetworkAvail()) {
-            callMapquestApi("Ondara, Spain");
-            //callForecastApi(latitude, longitude);
             toggleRefresh();
-        }
-        else {
+
+            String baseUrl = "https://api.forecast.io/forecast/";
+            String API_KEY = "9cda4809de69a167534617f6c1ff2972";
+            String queryOptions = "?units=si&lang=";
+            String queryLang = getString(R.string.query_language);
+            final String forecastUrl = baseUrl + API_KEY + '/' + queryLatitude
+                    + "," + queryLongitude + queryOptions + queryLang;
+
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(forecastUrl)
+                    .build();
+
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Request request, IOException e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            toggleRefresh();
+                        }
+                    });
+                    alertUserAboutError();
+                }
+
+                @Override
+                public void onResponse(Response response) throws IOException {
+                    try {
+                        String jsonData = response.body().string();
+                        if (response.isSuccessful()) {
+                            Log.i(TAG, "Successful ");
+                            mCurrentWeather = getCurrentDetails(jsonData);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    updateDisplay();
+                                    toggleRefresh();
+                                }
+                            });
+
+                        } else {
+                            alertUserAboutError();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    toggleRefresh();
+                                }
+                            });
+                        }
+                    } catch (IOException | JSONException e) {
+                        alertUserAboutError();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                toggleRefresh();
+                            }
+                        });
+                    }
+                }
+            });
+
+        } else {
             alertUserAboutError();
         }
     }
 
-    private void callForecastApi(double queryLatitude, double queryLongitude) {
+    private void callMapquestApi(String queryLocation) {
 
-        String baseUrl = "https://api.forecast.io/forecast/";
-        String API_KEY = "9cda4809de69a167534617f6c1ff2972";
-        String queryOptions = "?units=si&lang=";
-        String queryLang = getString(R.string.query_language);
-        final String forecastUrl = baseUrl + API_KEY + '/' + queryLatitude
-                + "," + queryLongitude + queryOptions + queryLang;
+        if (isNetworkAvail()) {
 
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder()
-                .url(forecastUrl)
-                .build();
+            String baseUrl = "http://open.mapquestapi.com/geocoding/v1/address?key=";
+            String API_KEY = "Fmjtd%7Cluu821uz2q%2C8n%3Do5-94bn5w";
+            String queryOptions0 = "&location=";
+            String mQueryLocation = Uri.encode(queryLocation);
+            String queryOptions1 = "&maxResults=1";
+            final String mapquestUrl = baseUrl + API_KEY + queryOptions0 + mQueryLocation + queryOptions1;
 
-        Call call = client.newCall(request);
-        call.enqueue(new Callback() {
-            @Override
-            public void onFailure(Request request, IOException e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        toggleRefresh();
-                    }
-                });
-                alertUserAboutError();
-            }
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(mapquestUrl)
+                    .build();
+            Log.i(TAG, "Built Request");
 
-            @Override
-            public void onResponse(Response response) throws IOException {
-                try {
-                    String jsonData = response.body().string();
-                    if (response.isSuccessful()) {
-                        Log.i(TAG, "Successful ");
-                        mCurrentWeather = getCurrentDetails(jsonData);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                updateDisplay();
-                                toggleRefresh();
-                            }
-                        });
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Request request, IOException e) {
+                    Log.e(TAG, "Failure Mapquest");
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            //toggleRefresh();
+                        }
+                    });
+                    alertUserAboutError();
+                }
 
-                    } else {
+
+                @Override
+                public void onResponse(Response response) throws IOException {
+                    try {
+                        String jsonData = response.body().string();
+                        Log.d(TAG, jsonData);
+                        if (response.isSuccessful()) {
+                            Log.i(TAG, "Successful Mapquest");
+                            mCurrentLocation = getLocationLatLong(jsonData);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    callForecastApi(latitude, longitude);
+                                    //updateDisplay();
+                                    //toggleRefresh();
+                                }
+                            });
+
+                        } else {
+                            Log.e(TAG, "elseblock onReponse");
+                            alertUserAboutError();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    //toggleRefresh();
+                                }
+                            });
+                        }
+                    } catch (IOException | JSONException e) {
+                        Log.e(TAG, e.getMessage());
                         alertUserAboutError();
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                toggleRefresh();
+                                //toggleRefresh();
                             }
                         });
                     }
-                } catch (IOException | JSONException e) {
-                    alertUserAboutError();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            toggleRefresh();
-                        }
-                    });
                 }
-            }
-        });
-    }
+            });
 
-    private void callMapquestApi (String queryLocation){
-
-        String baseUrl = "http://open.mapquestapi.com/geocoding/v1/address?key=";
-        String API_KEY = "Fmjtd%7Cluu821uz2q%2C8n%3Do5-94bn5w";
-        String queryOptions0 = "&location=";
-        String mQueryLocation = Uri.encode(queryLocation);
-        String queryOptions1 = "&maxResults=1";
-        final String mapquestUrl = baseUrl + API_KEY + queryOptions0 + mQueryLocation + queryOptions1;
-
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder()
-                .url(mapquestUrl)
-                .build();
-        Log.i(TAG, "Built Request");
-
-        Call call = client.newCall(request);
-        call.enqueue(new Callback() {
-            @Override
-            public void onFailure(Request request, IOException e) {
-                Log.e(TAG, "Failure Mapquest");
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        toggleRefresh();
-                    }
-                });
-                alertUserAboutError();
-            }
-
-
-            @Override
-            public void onResponse(Response response) throws IOException {
-                try {
-                    String jsonData = response.body().string();
-                    Log.d(TAG, jsonData);
-                    if (response.isSuccessful()) {
-                        Log.i(TAG, "Successful Mapquest");
-                        mCurrentLocation = getLocationLatLong(jsonData);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                //updateDisplay();
-                                toggleRefresh();
-                            }
-                        });
-
-                    } else {
-                        Log.e(TAG, "elseblock onReponse");
-                        alertUserAboutError();
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                toggleRefresh();
-                            }
-                        });
-                    }
-                } catch (IOException | JSONException e) {
-                    Log.e(TAG, e.getMessage());
-                    alertUserAboutError();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            toggleRefresh();
-                        }
-                    });
-                }
-            }
-        });
+        } else {
+            alertUserAboutError();
+        }
 
     }
 
@@ -281,7 +297,6 @@ public class MainActivity extends ActionBarActivity {
         JSONObject results = locationQuery.getJSONArray("results").getJSONObject(0);
 
         JSONObject latLng = results.getJSONArray("locations").getJSONObject(0).getJSONObject("latLng");
-        Log.i(TAG, latLng.toString());
         JSONObject providedLocation = results.getJSONObject("providedLocation");
 
         CurrentLocation currentLocation = new CurrentLocation();
@@ -293,8 +308,7 @@ public class MainActivity extends ActionBarActivity {
         longitude = latLng.getDouble("lng");
         givenLocation = providedLocation.getString("location");
 
-        String string = "Latitude: " + latitude + ", Longitude: " + longitude + ", Location: " + givenLocation;
-        Log.e(TAG, string);
+        Log.e(TAG, "Latitude: " + latitude + ", Longitude: " + longitude + ", Location: " + givenLocation);
 
         return currentLocation;
     }
