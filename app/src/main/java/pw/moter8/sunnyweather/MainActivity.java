@@ -5,6 +5,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -82,7 +83,6 @@ public class MainActivity extends ActionBarActivity {
             toggleRefresh();
         }
         else {
-
             alertUserAboutError();
         }
     }
@@ -105,8 +105,13 @@ public class MainActivity extends ActionBarActivity {
         call.enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toggleRefresh();
+                    }
+                });
                 alertUserAboutError();
-                toggleRefresh();
             }
 
             @Override
@@ -125,11 +130,21 @@ public class MainActivity extends ActionBarActivity {
 
                     } else {
                         alertUserAboutError();
-                        toggleRefresh();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                toggleRefresh();
+                            }
+                        });
                     }
                 } catch (IOException | JSONException e) {
                     alertUserAboutError();
-                    toggleRefresh();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            toggleRefresh();
+                        }
+                    });
                 }
             }
         });
@@ -161,8 +176,8 @@ public class MainActivity extends ActionBarActivity {
             public void onResponse(Response response) throws IOException {
                 try {
                     String jsonData = response.body().string();
+                    Log.d(TAG, jsonData);
                     if (response.isSuccessful()) {
-                        //Log.d(TAG, jsonData);
                         mCurrentLocation = getLocationLatLong(jsonData);
                         runOnUiThread(new Runnable() {
                             @Override
@@ -176,6 +191,7 @@ public class MainActivity extends ActionBarActivity {
                         toggleRefresh();
                     }
                 } catch (IOException | JSONException e) {
+                    Log.e(TAG, e.getMessage());
                     alertUserAboutError();
                     toggleRefresh();
                 }
