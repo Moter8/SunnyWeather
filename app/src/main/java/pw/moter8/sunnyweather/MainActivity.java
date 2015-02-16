@@ -11,7 +11,6 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.crashlytics.android.Crashlytics;
@@ -32,7 +31,7 @@ import java.io.IOException;
 
 public class MainActivity extends ActionBarActivity {
 
-    //for debugging// public static final String TAG = MainActivity.class.getSimpleName();
+    public static final String TAG = MainActivity.class.getSimpleName();
     private CurrentWeather mCurrentWeather;
     private CurrentLocation mCurrentLocation;
     private ColorWheel mColorWheel = new ColorWheel();
@@ -78,11 +77,13 @@ public class MainActivity extends ActionBarActivity {
     private void callApi(double latitude, double longitude) {
 
         if (isNetworkAvail()) {
+            //callMapquestApi("Ondara, Spain");
             callForecastApi(latitude, longitude);
             toggleRefresh();
         }
         else {
-            displayDialogError();
+
+            alertUserAboutError();
         }
     }
 
@@ -104,7 +105,7 @@ public class MainActivity extends ActionBarActivity {
         call.enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
-                displayDialogError();
+                alertUserAboutError();
                 toggleRefresh();
             }
 
@@ -124,11 +125,10 @@ public class MainActivity extends ActionBarActivity {
 
                     } else {
                         alertUserAboutError();
-                        displayDialogError();
                         toggleRefresh();
                     }
                 } catch (IOException | JSONException e) {
-                    displayDialogError();
+                    alertUserAboutError();
                     toggleRefresh();
                 }
             }
@@ -153,7 +153,7 @@ public class MainActivity extends ActionBarActivity {
         call.enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
-                displayDialogError();
+                alertUserAboutError();
                 toggleRefresh();
             }
 
@@ -162,6 +162,7 @@ public class MainActivity extends ActionBarActivity {
                 try {
                     String jsonData = response.body().string();
                     if (response.isSuccessful()) {
+                        //Log.d(TAG, jsonData);
                         mCurrentLocation = getLocationLatLong(jsonData);
                         runOnUiThread(new Runnable() {
                             @Override
@@ -172,11 +173,10 @@ public class MainActivity extends ActionBarActivity {
 
                     } else {
                         alertUserAboutError();
-                        displayDialogError();
                         toggleRefresh();
                     }
                 } catch (IOException | JSONException e) {
-                    displayDialogError();
+                    alertUserAboutError();
                     toggleRefresh();
                 }
             }
@@ -191,13 +191,6 @@ public class MainActivity extends ActionBarActivity {
         super.onResume();
     }
 
-    private void displayDialogError() {
-        new MaterialDialog.Builder(this)
-                .title(getString(R.string.error_title))
-                .content(getString(R.string.network_unavailable_error))
-                .positiveText(getString(R.string.error_ok_button)).show();
-    }
-
     private void updateDisplay() {
         mTemperatureValue.setText(mCurrentWeather.getTemperature() + "°C");
         mTimeLabel.setText(getString(R.string.time_prefix) + mCurrentWeather.getFormattedTime() + getString(R.string.time_suffix));
@@ -207,7 +200,6 @@ public class MainActivity extends ActionBarActivity {
 
         mIconImageView.setImageDrawable(getResources().getDrawable(mCurrentWeather.getIconId()));
 
-        //Toast.makeText(this, mCurrentLocation.getLatitude() + "", Toast.LENGTH_LONG).show();
     }
 
     private void toggleRefresh() {
@@ -242,13 +234,16 @@ public class MainActivity extends ActionBarActivity {
 
     private CurrentLocation getLocationLatLong(String jsonData) throws JSONException {
         JSONObject locationQuery = new JSONObject(jsonData);
-        JSONObject location = locationQuery.getJSONObject("results").getJSONObject("locations").getJSONObject("latLng");
+        JSONObject location = locationQuery.getJSONArray("results").getJSONArray(0).getJSONObject(0);
+
+        JSONObject latLng = location.getJSONArray("locations").getJSONObject(0).getJSONObject("latLng");
+        JSONObject providedLocation = location.getJSONObject("providedLocation");
 
         CurrentLocation currentLocation = new CurrentLocation();
 
-        currentLocation.setProvidedLocation(location.getString("providedLocation"));
-        currentLocation.setLatitude(location.getDouble("lat"));
-        currentLocation.setLongitude(location.getDouble("lng"));
+        currentLocation.setProvidedLocation(providedLocation.getString("providedLocation"));
+        currentLocation.setLatitude(latLng.getDouble("lat"));
+        currentLocation.setLongitude(latLng.getDouble("lng"));
 
         return currentLocation;
     }
