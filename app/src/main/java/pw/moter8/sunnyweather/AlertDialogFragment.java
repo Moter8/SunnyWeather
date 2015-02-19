@@ -8,7 +8,7 @@ import android.os.Bundle;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 
-public class AlertDialogFragment extends DialogFragment{
+public class AlertDialogFragment extends DialogFragment {
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {

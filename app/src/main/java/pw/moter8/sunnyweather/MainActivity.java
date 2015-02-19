@@ -4,8 +4,8 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -41,10 +41,9 @@ public class MainActivity extends ActionBarActivity {
     private CurrentWeather mCurrentWeather;
     private CurrentLocation mCurrentLocation;
     private ColorWheel mColorWheel = new ColorWheel();
-    public double latitude = 38.827728;
-    public double longitude = 0.01694;
-    public String givenLocation = "Ondara, Alicante";
-
+    public double latitude = 0;
+    public double longitude = 0.0;
+    public String givenLocation = "Ondara";
 
     @InjectView(R.id.locationLabel) EditText mLocationLabel;
     @InjectView(R.id.timeLabel )TextView mTimeLabel;
@@ -64,15 +63,33 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.inject(this); // inject the above views
 
+        final AppPreferences appPreferences = new AppPreferences(this);
+
         final RelativeLayout relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
         relativeLayout.setBackgroundColor(mColorWheel.getColor()); // random backgroundColor
+
+        if (appPreferences.getUserProvidedLocation().equals("")) {
+            mLocationLabel.setText(getString(R.string.default_location));
+        }
+
+        if (appPreferences.isHasSetLatLong()) {
+            callForecastApi(appPreferences.getSetLat(), appPreferences.getSetLong());
+        }
+        else if (appPreferences.isHasSetLocation()) {
+            callMapquestApi(appPreferences.getUserProvidedLocation());
+        }
+
 
         mLocationLabel.setOnEditorActionListener(new EditText.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    //Toast.makeText(MainActivity.this, getString(R.string.demand_refresh) + getString(R.string.button_refresh)) + '!' , Toast.LENGTH_SHORT).show();
-                    callMapquestApi(mLocationLabel.getText().toString());
+
+                    String providedLocation = mLocationLabel.getText().toString();
+                    callMapquestApi(providedLocation);
+                    appPreferences.setUserProvidedLocation(providedLocation);
+
+
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     imm.hideSoftInputFromWindow(mLocationLabel.getWindowToken(), 0);
                     return true;
@@ -91,14 +108,14 @@ public class MainActivity extends ActionBarActivity {
             }
         };
 
-
         mButton.setOnClickListener(listener);
     }
 
-    private void callForecastApi(double queryLatitude, double queryLongitude) {
 
+    private void callForecastApi(double queryLatitude, double queryLongitude) {
         if (isNetworkAvail()) {
             toggleRefresh();
+
 
             String baseUrl = "https://api.forecast.io/forecast/";
             String API_KEY = "9cda4809de69a167534617f6c1ff2972";
@@ -130,7 +147,7 @@ public class MainActivity extends ActionBarActivity {
                     try {
                         String jsonData = response.body().string();
                         if (response.isSuccessful()) {
-                            Log.i(TAG, "Successful ");
+                            Log.i(TAG, "Successful Forecast Request");
                             mCurrentWeather = getCurrentDetails(jsonData);
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -197,18 +214,18 @@ public class MainActivity extends ActionBarActivity {
                     alertUserAboutError();
                 }
 
-
                 @Override
                 public void onResponse(Response response) throws IOException {
                     try {
                         String jsonData = response.body().string();
                         Log.d(TAG, jsonData);
                         if (response.isSuccessful()) {
-                            Log.i(TAG, "Successful Mapquest");
+                            Log.i(TAG, "Successful Mapquest Request");
                             mCurrentLocation = getLocationLatLong(jsonData);
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
+                                    saveLatLongPrefs(latitude, longitude);
                                     callForecastApi(latitude, longitude);
                                     //updateDisplay();
                                     //toggleRefresh();
@@ -216,7 +233,7 @@ public class MainActivity extends ActionBarActivity {
                             });
 
                         } else {
-                            Log.e(TAG, "elseblock onReponse");
+                            Log.e(TAG, "Mapquest elseblock onReponse");
                             alertUserAboutError();
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -319,6 +336,7 @@ public class MainActivity extends ActionBarActivity {
 
     }
 
+
     public boolean isNetworkAvail() {
         ConnectivityManager manager = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -331,4 +349,12 @@ public class MainActivity extends ActionBarActivity {
         }
         return isAvailable;
     }
+
+    // Is this actually useful? Seems pretty redundant to me...
+
+    private void saveLatLongPrefs(double latitude, double longitude) {
+        AppPreferences mAppPreferences = new AppPreferences(MainActivity.this);
+        mAppPreferences.setLatLong(latitude, longitude);
+    }
+
 }

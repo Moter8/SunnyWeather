@@ -12,7 +12,8 @@
     <string name="time_default">"Son las ─"</string>
     <string name="humidity_label">"Humedad"</string>
     <string name="precipitation_label">"Lluvia o Nieve"</string>
-    <string name="summary_default">Obteniendo Tiempo actual…</string>
+    <string name="summary_default">Entra tu Localidad…</string>
     <string name="button_refresh">"Actualizar"</string>
     <string name="demand_refresh">"Ahora dále a "</string>
+    <string name="default_location">"Ondara, Alicante</string>
 </resources>

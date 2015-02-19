@@ -12,7 +12,8 @@
     <string name="time_default">Um ─ ist es</string>
     <string name="humidity_label">Luftfeuchtigkeit</string>
     <string name="precipitation_label">Regen oder Schnee</string>
-    <string name="summary_default">"Laden des aktuellen Wetters…"</string>
+    <string name="summary_default">"Tipp dein Ort ein…"</string>
     <string name="button_refresh">"Aktualisieren"</string>
     <string name="demand_refresh">"Tippe auf  "</string>
+    <string name="default_location">"Berlin, Deutschland"</string>
 </resources>
