@@ -23,12 +23,12 @@ android {
         applicationId "pw.moter8.sunnyweather"
         minSdkVersion 16
         targetSdkVersion 21
-        versionCode 3
-        versionName "2.2"
+        versionCode 4
+        versionName "2.2.1"
     }
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

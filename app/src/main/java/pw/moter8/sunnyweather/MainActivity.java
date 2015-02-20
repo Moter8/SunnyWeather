@@ -41,7 +41,7 @@ public class MainActivity extends ActionBarActivity {
     private CurrentWeather mCurrentWeather;
     private CurrentLocation mCurrentLocation;
     private ColorWheel mColorWheel = new ColorWheel();
-    public double latitude = 0;
+    public double latitude = 0.0;
     public double longitude = 0.0;
     public String givenLocation = "Ondara";
 
@@ -70,10 +70,14 @@ public class MainActivity extends ActionBarActivity {
 
         if (appPreferences.getUserProvidedLocation().equals("")) {
             mLocationLabel.setText(getString(R.string.default_location));
+        } else {
+            mLocationLabel.setText(appPreferences.getUserProvidedLocation());
         }
 
         if (appPreferences.isHasSetLatLong()) {
-            callForecastApi(appPreferences.getSetLat(), appPreferences.getSetLong());
+            latitude = appPreferences.getSetLat();
+            longitude = appPreferences.getSetLong();
+            callForecastApi(latitude, longitude);
         }
         else if (appPreferences.isHasSetLocation()) {
             callMapquestApi(appPreferences.getUserProvidedLocation());
@@ -102,7 +106,10 @@ public class MainActivity extends ActionBarActivity {
         View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                callForecastApi(latitude, longitude);
+                if (appPreferences.getSetLat() != 0.0) {
+                    callForecastApi(latitude, longitude);
+                } else callMapquestApi(mLocationLabel.getText().toString());
+
                 //callMapquestApi("Ondara, Spain");
                 //Toast.makeText(MainActivity.this, "Location" + givenLocation + ", Longitude: " + longitude + ", Latitude: " + latitude, Toast.LENGTH_SHORT).show();
             }
@@ -112,10 +119,9 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-    private void callForecastApi(double queryLatitude, double queryLongitude) {
+    private void callForecastApi(final double queryLatitude, final double queryLongitude) {
         if (isNetworkAvail()) {
             toggleRefresh();
-
 
             String baseUrl = "https://api.forecast.io/forecast/";
             String API_KEY = "9cda4809de69a167534617f6c1ff2972";
@@ -152,6 +158,7 @@ public class MainActivity extends ActionBarActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
+                                    saveLatLongPrefs(queryLatitude, queryLongitude);
                                     updateDisplay();
                                     toggleRefresh();
                                 }
@@ -183,7 +190,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    private void callMapquestApi(String queryLocation) {
+    private void callMapquestApi(final String queryLocation) {
 
         if (isNetworkAvail()) {
 
@@ -225,6 +232,7 @@ public class MainActivity extends ActionBarActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
+                                    saveLocationPrefs(queryLocation);
                                     saveLatLongPrefs(latitude, longitude);
                                     callForecastApi(latitude, longitude);
                                     //updateDisplay();
@@ -233,7 +241,7 @@ public class MainActivity extends ActionBarActivity {
                             });
 
                         } else {
-                            Log.e(TAG, "Mapquest elseblock onReponse");
+                            //Log.e(TAG, "Mapquest elseblock onReponse");
                             alertUserAboutError();
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -243,7 +251,7 @@ public class MainActivity extends ActionBarActivity {
                             });
                         }
                     } catch (IOException | JSONException e) {
-                        Log.e(TAG, e.getMessage());
+                        //Log.e(TAG, e.getMessage());
                         alertUserAboutError();
                         runOnUiThread(new Runnable() {
                             @Override
@@ -355,6 +363,10 @@ public class MainActivity extends ActionBarActivity {
     private void saveLatLongPrefs(double latitude, double longitude) {
         AppPreferences mAppPreferences = new AppPreferences(MainActivity.this);
         mAppPreferences.setLatLong(latitude, longitude);
+    }
+    private void saveLocationPrefs(String location) {
+        AppPreferences mAppPreferences = new AppPreferences(MainActivity.this);
+        mAppPreferences.setUserProvidedLocation(location);
     }
 
 }
